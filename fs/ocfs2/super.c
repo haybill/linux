@@ -29,6 +29,7 @@
 #include <linux/quotaops.h>
 #include <linux/cleancache.h>
 #include <linux/signal.h>
+#include <linux/dax.h>
 
 #define CREATE_TRACE_POINTS
 #include "ocfs2_trace.h"
@@ -175,6 +176,7 @@ enum {
 	Opt_dir_resv_level,
 	Opt_journal_async_commit,
 	Opt_err_cont,
+	Opt_dax,
 	Opt_err,
 };
 
@@ -208,6 +210,7 @@ static const match_table_t tokens = {
 	{Opt_dir_resv_level, "dir_resv_level=%u"},
 	{Opt_journal_async_commit, "journal_async_commit"},
 	{Opt_err_cont, "errors=continue"},
+	{Opt_dax, "dax"},
 	{Opt_err, NULL}
 };
 
@@ -1314,6 +1317,15 @@ static int ocfs2_parse_options(struct super_block *sb,
 		case Opt_data_writeback:
 			mopt->mount_opt |= OCFS2_MOUNT_DATA_WRITEBACK;
 			break;
+		case Opt_dax:
+#ifdef CONFIG_FS_DAX
+			mlog(ML_NOTICE,
+                "DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
+			mopt->mount_opt |= OCFS2_MOUNT_DAX;
+#else
+			mlog(0, "dax option not supported");
+#endif
+			break;
 		case Opt_user_xattr:
 			mopt->mount_opt &= ~OCFS2_MOUNT_NOUSERXATTR;
 			break;
@@ -1546,6 +1558,9 @@ static int ocfs2_show_options(struct seq_file *s, struct dentry *root)
 		seq_printf(s, ",acl");
 	else
 		seq_printf(s, ",noacl");
+
+	if (opts & OCFS2_MOUNT_DAX)
+		seq_printf(s, ",dax");
 
 	if (osb->osb_resv_level != OCFS2_DEFAULT_RESV_LEVEL)
 		seq_printf(s, ",resv_level=%d", osb->osb_resv_level);
