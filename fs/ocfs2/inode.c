@@ -75,7 +75,7 @@ void ocfs2_set_inode_flags(struct inode *inode)
 	unsigned int flags = OCFS2_I(inode)->ip_attr;
 
 	inode->i_flags &= ~(S_IMMUTABLE |
-		S_SYNC | S_APPEND | S_NOATIME | S_DIRSYNC);
+		S_SYNC | S_APPEND | S_NOATIME | S_DIRSYNC | S_DAX);
 
 	if (flags & OCFS2_IMMUTABLE_FL)
 		inode->i_flags |= S_IMMUTABLE;
@@ -88,6 +88,8 @@ void ocfs2_set_inode_flags(struct inode *inode)
 		inode->i_flags |= S_NOATIME;
 	if (flags & OCFS2_DIRSYNC_FL)
 		inode->i_flags |= S_DIRSYNC;
+	if (OCFS2_SB(inode->i_sb)->s_mount_opt & OCFS2_MOUNT_DAX)
+		inode->i_flags |= S_DAX;
 }
 
 /* Propagate flags from i_flags to OCFS2_I(inode)->ip_attr */
@@ -96,7 +98,7 @@ void ocfs2_get_inode_flags(struct ocfs2_inode_info *oi)
 	unsigned int flags = oi->vfs_inode.i_flags;
 
 	oi->ip_attr &= ~(OCFS2_SYNC_FL|OCFS2_APPEND_FL|
-			OCFS2_IMMUTABLE_FL|OCFS2_NOATIME_FL|OCFS2_DIRSYNC_FL);
+			OCFS2_IMMUTABLE_FL|OCFS2_NOATIME_FL|OCFS2_DIRSYNC_FL|OCFS2_MOUNT_DAX);
 	if (flags & S_SYNC)
 		oi->ip_attr |= OCFS2_SYNC_FL;
 	if (flags & S_APPEND)
@@ -107,6 +109,12 @@ void ocfs2_get_inode_flags(struct ocfs2_inode_info *oi)
 		oi->ip_attr |= OCFS2_NOATIME_FL;
 	if (flags & S_DIRSYNC)
 		oi->ip_attr |= OCFS2_DIRSYNC_FL;
+#ifdef DAX_FIXME
+	if (flags & S_DAX)
+fs/ocfs2/inode.c: In function ‘ocfs2_get_inode_flags’:
+fs/ocfs2/inode.c:113:5: error: ‘struct ocfs2_inode_info’ has no member named ‘i_sb’
+		oi->i_sb->s_mount_opt |= OCFS2_MOUNT_DAX;
+#endif
 }
 
 struct inode *ocfs2_ilookup(struct super_block *sb, u64 blkno)
