@@ -77,6 +77,7 @@ or a write()) work correctly.
 These filesystems may be used for inspiration:
 - ext2: the second extended filesystem, see Documentation/filesystems/ext2.txt
 - ext4: the fourth extended filesystem, see Documentation/filesystems/ext4.txt
+- ocfs2: the oracle cluster file system 2, see Documentation/filesystems/ocfs2.txt
 
 
 Shortcomings
