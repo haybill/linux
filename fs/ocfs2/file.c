@@ -123,7 +123,7 @@ static int ocfs2_file_open(struct inode *inode, struct file *file)
 		goto leave;
 	}
 
-	if (mode & O_DIRECT)
+	if (io_is_direct(file))
 		oi->ip_flags |= OCFS2_INODE_OPEN_DIRECT;
 
 	oi->ip_open_count++;
