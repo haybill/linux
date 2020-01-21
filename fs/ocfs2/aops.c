@@ -219,6 +219,15 @@ bail:
 	return err;
 }
 
+int ocfs2_get_block_dax(struct inode *inode, sector_t iblock,
+		   struct buffer_head *bh_result, int create)
+{
+	int flags = EXT4_GET_BLOCKS_PRE_IO | EXT4_GET_BLOCKS_UNWRIT_EXT;
+	if (create)
+		flags |= EXT4_GET_BLOCKS_CREATE;
+	return ocfs2_get_block(inode, iblock, bh_result, flags);
+}
+
 int ocfs2_read_inline_data(struct inode *inode, struct page *page,
 			   struct buffer_head *di_bh)
 {

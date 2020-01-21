@@ -30,6 +30,7 @@
 #include <linux/uio.h>
 #include <linux/signal.h>
 #include <linux/rbtree.h>
+#include <linux/dax.h>
 
 #include <cluster/masklog.h>
 
@@ -42,6 +43,44 @@
 #include "mmap.h"
 #include "super.h"
 #include "ocfs2_trace.h"
+
+#ifdef CONFIG_FS_DAX
+static int ocfs2_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
+
+static void ocfs2_end_io_unwritten(struct buffer_head *bh, int uptodate)
+{
+        struct inode *inode = bh->b_assoc_map->host;
+        /* XXX: breaks on 32-bit > 16TB. Is that even supported? */
+        loff_t offset = (loff_t)(uintptr_t)bh->b_private << inode->i_blkbits;
+        int err;
+        if (!uptodate)
+                return;
+        WARN_ON(!buffer_unwritten(bh));
+        err = ocfs2_convert_unwritten_extents(NULL, inode, offset, bh->b_size);
+}
+
+static int ocfs2_dax_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+{
+	sigset_t oldset;
+	int ret;
+
+	ocfs2_block_signals(&oldset);
+	ret = dax_fault(area, vmf, ocfs2_get_block_dax, ocfs2_end_io_unwritten);
+	ocfs2_unblock_signals(&oldset);
+
+	trace_ocfs2_fault(OCFS2_I(area->vm_file->f_mapping->host)->ip_blkno,
+			  area, vmf->page, vmf->pgoff);
+	return ret;
+}
+
+static const struct vm_operations_struct ocfs2_dax_vm_ops = {
+	.fault		= ocfs2_dax_fault,
+	.page_mkwrite	= ocfs2_page_mkwrite,
+};
+
+#else
+#define ocfs2_dax_vm_ops ocfs2_file_vm_ops
+#endif
 
 
 static int ocfs2_fault(struct vm_area_struct *area, struct vm_fault *vmf)
@@ -188,6 +227,12 @@ int ocfs2_mmap(struct file *file, struct vm_area_struct *vma)
 	ocfs2_inode_unlock(file_inode(file), lock_level);
 out:
 	vma->vm_ops = &ocfs2_file_vm_ops;
+	if (IS_DAX(file_inode(file))) {
+		vma->vm_ops = &ocfs2_dax_vm_ops;
+		vma->vm_flags |= VM_MIXEDMAP;
+	} else {
+		vma->vm_ops = &ocfs2_file_vm_ops;
+	}
 	return 0;
 }
 
