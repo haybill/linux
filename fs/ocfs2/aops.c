@@ -222,9 +222,9 @@ bail:
 int ocfs2_get_block_dax(struct inode *inode, sector_t iblock,
 		   struct buffer_head *bh_result, int create)
 {
-	int flags = EXT4_GET_BLOCKS_PRE_IO | EXT4_GET_BLOCKS_UNWRIT_EXT;
+	int flags = 0;
 	if (create)
-		flags |= EXT4_GET_BLOCKS_CREATE;
+		flags |= 0x04;
 	return ocfs2_get_block(inode, iblock, bh_result, flags);
 }
 

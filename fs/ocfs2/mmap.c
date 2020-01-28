@@ -50,13 +50,14 @@ static int ocfs2_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
 static void ocfs2_end_io_unwritten(struct buffer_head *bh, int uptodate)
 {
         struct inode *inode = bh->b_assoc_map->host;
+        struct ocfs2_super *osb = OCFS2_SB(inode->i_sb);
+
         /* XXX: breaks on 32-bit > 16TB. Is that even supported? */
-        loff_t offset = (loff_t)(uintptr_t)bh->b_private << inode->i_blkbits;
         int err;
         if (!uptodate)
                 return;
         WARN_ON(!buffer_unwritten(bh));
-        err = ocfs2_convert_unwritten_extents(NULL, inode, offset, bh->b_size);
+        err = ocfs2_writes_unwritten_extents(osb);
 }
 
 static int ocfs2_dax_fault(struct vm_area_struct *area, struct vm_fault *vmf)
